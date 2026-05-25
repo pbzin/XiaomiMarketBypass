@@ -4,6 +4,8 @@
 
 [![Repo Views](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpbzin%2FXiaomiMarketBypass&label=repo%20views&countColor=%230e75b6&style=flat)](https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2Fpbzin%2FXiaomiMarketBypass)
 
+![Downloads](https://img.shields.io/github/downloads/pbzin/XiaomiMarketBypass/total?style=flat&color=0e75b6&label=downloads)
+
 # Xiaomi Market Bypass
 
 LSPosed module for running Xiaomi Market on AOSP/crDroid ROMs.
