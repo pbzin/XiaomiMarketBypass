@@ -40,7 +40,3 @@ The module now defers the pending PackageInstaller intent until Market returns t
 - Android with LSPosed.
 - Xiaomi Market installed as `com.xiaomi.market` (v4.111.0 recommended).
 - Enable this module for Xiaomi Market in LSPosed, then force stop or reboot before testing.
-
-## LSPosed Module Repository
-
-The module is prepared for distribution through the [LSPosed Module Repository](https://modules.lsposed.org/module/com.pb.xiaomimarketbypass). Its LSPosed metadata and releases are maintained in the [Xposed-Modules-Repo entry](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass), while the source code remains in this repository.
