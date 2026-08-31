@@ -45,7 +45,7 @@ The second scope is required for pause and resume because the AOSP DownloadProvi
 
 ## Download
 
-[![Download](https://img.shields.io/badge/Download-OrangeFox%20Sapphire-orange?style=for-the-badge&logo=github)](https://github.com/pbzin/XiaomiMarketBypass/releases)
+[![Download](https://img.shields.io/badge/Download-Xiaomi%20Market%20Bypass-orange?style=for-the-badge&logo=github)](https://github.com/pbzin/XiaomiMarketBypass/releases)
 
 ### 💖 Support My Work
 
