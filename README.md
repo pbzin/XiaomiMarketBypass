@@ -22,7 +22,7 @@ The module targets `com.xiaomi.market` and patches the compatibility gaps that m
 
 ## Tested behavior
 
-The current build was validated with Xiaomi Market downloading and installing TikTok Lite/Douyin Lite. The failing path was:
+The current build was validated with Xiaomi Market **v4.111.0** (recommended version) downloading and installing TikTok Lite/Douyin Lite. The failing path was:
 
 1. Xiaomi Market finished the download.
 2. Android blocked the install confirmation activity because Market was in the background.
@@ -33,7 +33,7 @@ The module now defers the pending PackageInstaller intent until Market returns t
 ## Requirements
 
 - Android with LSPosed.
-- Xiaomi Market installed as `com.xiaomi.market`.
+- Xiaomi Market installed as `com.xiaomi.market` (v4.111.0 recommended).
 - Enable this module for Xiaomi Market in LSPosed, then force stop or reboot before testing.
 
 ## Build
@@ -41,11 +41,11 @@ The module now defers the pending PackageInstaller intent until Market returns t
 Use Android Gradle Plugin from this project with a local Gradle 8.2+ install:
 
 ```bash
-gradle assembleDebug
+./gradlew assembleRelease
 ```
 
-The debug APK is generated at:
+The release APK is generated at:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/release/app-release-unsigned.apk
 ```
