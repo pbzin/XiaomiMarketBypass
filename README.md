@@ -6,6 +6,10 @@
 
 ![Downloads](https://img.shields.io/github/downloads/pbzin/XiaomiMarketBypass/total?style=flat&color=0e75b6&label=downloads)
 
+[![LSPosed Repo Views](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FXposed-Modules-Repo%2Fcom.pb.xiaomimarketbypass&label=LSPosed%20repo%20views&countColor=%230e75b6&style=flat)](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass)
+
+[![LSPosed Downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.pb.xiaomimarketbypass/total?style=flat&color=0e75b6&label=LSPosed%20downloads)](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass/releases)
+
 # Xiaomi Market Bypass
 
 LSPosed module for running Xiaomi Market on AOSP/crDroid ROMs.
@@ -36,16 +40,6 @@ The module now defers the pending PackageInstaller intent until Market returns t
 - Xiaomi Market installed as `com.xiaomi.market` (v4.111.0 recommended).
 - Enable this module for Xiaomi Market in LSPosed, then force stop or reboot before testing.
 
-## Build
+## LSPosed Module Repository
 
-Use Android Gradle Plugin from this project with a local Gradle 8.2+ install:
-
-```bash
-./gradlew assembleRelease
-```
-
-The release APK is generated at:
-
-```text
-app/build/outputs/apk/release/app-release-unsigned.apk
-```
+The module is prepared for distribution through the [LSPosed Module Repository](https://modules.lsposed.org/module/com.pb.xiaomimarketbypass). Its LSPosed metadata and releases are maintained in the [Xposed-Modules-Repo entry](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass), while the source code remains in this repository.
