@@ -45,9 +45,7 @@ The second scope is required for pause and resume because the AOSP DownloadProvi
 
 ## Download
 
-- [Release v1.4](https://github.com/pbzin/XiaomiMarketBypass/releases/tag/v1.4) — module APK and Xiaomi Market v4.111.0 APK.
-
-<a href="https://github.com/pbzin/XiaomiMarketBypass/releases/tag/v1.4"><img src="https://img.shields.io/github/downloads/pbzin/XiaomiMarketBypass/total?style=flat&color=0e75b6&label=downloads" alt="Downloads"></a>
+[![Download](https://img.shields.io/badge/Download-OrangeFox%20Sapphire-orange?style=for-the-badge&logo=github)](https://github.com/pbzin/XiaomiMarketBypass/releases)
 
 ### 💖 Support My Work
 
