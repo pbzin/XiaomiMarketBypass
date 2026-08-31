@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Xiaomi Market Bypass</string>
-    <string name="status_title">Xiaomi Market Bypass</string>
-    <string name="status_text">Ative este modulo no LSPosed para corrigir o Xiaomi Market em ROMs AOSP/crDroid.</string>
+    <string name="status_text">Ative este módulo no LSPosed para Xiaomi Market e Gerenciador de downloads em ROMs AOSP/crDroid.</string>
 </resources>

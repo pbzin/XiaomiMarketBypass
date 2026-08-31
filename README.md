@@ -39,4 +39,11 @@ The module now defers the pending PackageInstaller intent until Market returns t
 
 - Android with LSPosed.
 - Xiaomi Market installed as `com.xiaomi.market` (v4.111.0 recommended).
-- Enable this module for Xiaomi Market in LSPosed, then force stop or reboot before testing.
+- Enable this module for both `com.xiaomi.market` and `com.android.providers.downloads` in LSPosed, then force stop the Market and DownloadProvider or reboot before testing.
+
+The second scope is required for pause and resume because the AOSP DownloadProvider on this ROM does not schedule a paused download again when Xiaomi Market resumes it.
+
+## Download
+
+- [Latest debug APK](https://github.com/pbzin/XiaomiMarketBypass/releases/download/v1.4/XiaomiMarketBypass-v1.4-debug.apk)
+- [LSPosed repository](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass)

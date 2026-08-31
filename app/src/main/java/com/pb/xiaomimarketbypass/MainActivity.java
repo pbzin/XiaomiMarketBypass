@@ -12,7 +12,8 @@ public class MainActivity extends Activity {
 
         TextView textView = new TextView(this);
         textView.setGravity(Gravity.CENTER);
-        textView.setPadding(32, 32, 32, 32);
+        int padding = Math.round(24 * getResources().getDisplayMetrics().density);
+        textView.setPadding(padding, padding, padding, padding);
         textView.setText(R.string.status_text);
         setContentView(textView);
     }

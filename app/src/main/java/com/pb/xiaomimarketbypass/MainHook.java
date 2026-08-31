@@ -11,13 +11,18 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
+import android.view.WindowInsetsController;
 
 import java.io.File;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import dalvik.system.BaseDexClassLoader;
 
@@ -31,20 +36,31 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public class MainHook implements IXposedHookLoadPackage {
     private static final String TAG = "XiaomiMarketBypass";
     private static final String MARKET_PACKAGE = "com.xiaomi.market";
+    private static final String DOWNLOAD_PROVIDER_PACKAGE = "com.android.providers.downloads";
+    private static final String DOWNLOAD_PROVIDER_PROCESS = "android.process.media";
+    private static final Object PENDING_INSTALL_LOCK = new Object();
+    private static final ArrayDeque<PendingInstallAction> PENDING_INSTALL_ACTIONS = new ArrayDeque<>();
 
     private static volatile Context appContext;
-    private static volatile Intent deferredInstallIntent;
-    private static volatile String deferredInstallPackage;
-    private static volatile boolean marketActivityResumed;
+    private static int resumedActivityCount;
+    private static boolean reconcileScheduled;
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
+        if (DOWNLOAD_PROVIDER_PACKAGE.equals(lpparam.packageName)
+                || DOWNLOAD_PROVIDER_PROCESS.equals(lpparam.processName)) {
+            log("loaded DownloadProvider package=" + lpparam.packageName
+                    + " process=" + lpparam.processName);
+            hookAospDownloadProvider(lpparam.classLoader);
+            return;
+        }
         if (!MARKET_PACKAGE.equals(lpparam.packageName)) {
             return;
         }
 
         log("loaded " + lpparam.packageName + " process=" + lpparam.processName);
-        hookApplicationContext(lpparam.classLoader);
+        boolean mainProcess = lpparam.processName == null || MARKET_PACKAGE.equals(lpparam.processName);
+        hookApplicationContext(lpparam.classLoader, mainProcess);
         hookXiaomiMarket(lpparam.classLoader);
     }
 
@@ -119,7 +135,7 @@ public class MainHook implements IXposedHookLoadPackage {
         return null;
     }
 
-    private static void hookApplicationContext(ClassLoader classLoader) {
+    private static void hookApplicationContext(ClassLoader classLoader, boolean mainProcess) {
         try {
             XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
@@ -129,14 +145,19 @@ public class MainHook implements IXposedHookLoadPackage {
                             ? attachContext.getApplicationContext()
                             : attachContext;
                     appendModuleApkToTargetClassLoader(attachContext.getClassLoader(), attachContext);
-                    reconcileInstalledMarketDownloads(attachContext.getClassLoader(), appContext);
+                    if (mainProcess) {
+                        reconcileInstalledMarketDownloads(attachContext.getClassLoader(), appContext);
+                    }
                     log("context attached");
                 }
             });
+            if (!mainProcess) {
+                return;
+            }
             XposedHelpers.findAndHookMethod(Activity.class, "onResume", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
-                    marketActivityResumed = true;
+                    resumedActivityCount++;
                     Activity activity = (Activity) param.thisObject;
                     Context context = appContext != null ? appContext : activity;
                     flushDeferredInstallIntent(context);
@@ -146,7 +167,7 @@ public class MainHook implements IXposedHookLoadPackage {
             XposedHelpers.findAndHookMethod(Activity.class, "onPause", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
-                    marketActivityResumed = false;
+                    resumedActivityCount = Math.max(0, resumedActivityCount - 1);
                 }
             });
         } catch (Throwable t) {
@@ -426,6 +447,10 @@ public class MainHook implements IXposedHookLoadPackage {
                 String apkPath = path.substring(0, path.length() - ".zst".length());
                 File apkFile = new File(apkPath);
                 if (!apkFile.isFile() || apkFile.length() == 0L) {
+                    if (apkFile.exists() && !apkFile.delete()) {
+                        log("could not remove invalid decompressed apk: " + apkPath);
+                        continue;
+                    }
                     String tmpPath = apkPath + ".tmp";
                     new File(tmpPath).delete();
                     Object decompressor = XposedHelpers.getStaticObjectField(
@@ -438,6 +463,11 @@ public class MainHook implements IXposedHookLoadPackage {
                         continue;
                     }
                     File tmpFile = new File(tmpPath);
+                    if (!tmpFile.isFile() || tmpFile.length() == 0L) {
+                        log("zstd decompressor produced an empty output: " + tmpPath);
+                        tmpFile.delete();
+                        continue;
+                    }
                     if (!tmpFile.renameTo(apkFile)) {
                         log("zstd decompress rename failed: " + tmpPath + " -> " + apkPath);
                         tmpFile.delete();
@@ -450,6 +480,10 @@ public class MainHook implements IXposedHookLoadPackage {
                 XposedHelpers.setBooleanField(split, "useDecompressLater", false);
                 XposedHelpers.setLongField(split, "sessionBytes", 0L);
                 XposedHelpers.setLongField(split, "lastUpdateBytes", 0L);
+                File compressedFile = new File(path);
+                if (compressedFile.exists() && !compressedFile.delete()) {
+                    log("could not remove decompressed zstd source: " + path);
+                }
                 log("rewrote compressed session split to apk: " + apkPath + " bytes=" + apkBytes);
             } catch (Throwable t) {
                 log("rewrite compressed session split failed", t);
@@ -475,32 +509,27 @@ public class MainHook implements IXposedHookLoadPackage {
                                 return;
                             }
                             Intent resultIntent = (Intent) param.args[0];
-                            Intent pending = resultIntent.getParcelableExtra(Intent.EXTRA_INTENT);
+                            Intent pending = getPendingUserActionIntent(resultIntent);
                             Context context = appContext;
                             if (pending == null || context == null) {
                                 log("pending install action missing: pending=" + pending + " context=" + context);
                                 return;
                             }
                             pending.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            if (marketActivityResumed || isMarketProcessForeground(context)) {
-                                context.startActivity(pending);
-                                log("started PackageInstaller pending user action for " + param.args[1]);
+                            String packageName = (String) param.args[1];
+                            if (resumedActivityCount > 0 || isMarketProcessForeground(context)) {
+                                try {
+                                    context.startActivity(pending);
+                                    log("started PackageInstaller pending user action for " + packageName);
+                                } catch (Throwable t) {
+                                    deferInstallAction(pending, packageName);
+                                    log("PackageInstaller pending action launch failed; deferred " + packageName, t);
+                                }
                             } else {
-                                deferredInstallIntent = new Intent(pending);
-                                deferredInstallPackage = (String) param.args[1];
-                                log("deferred PackageInstaller pending user action for " + deferredInstallPackage);
+                                deferInstallAction(pending, packageName);
+                                log("deferred PackageInstaller pending user action for " + packageName);
                             }
                             param.setResult(null);
-                        }
-
-                        @Override
-                        protected void afterHookedMethod(MethodHookParam param) {
-                            int status = (Integer) param.args[2];
-                            if (status != 0) {
-                                return;
-                            }
-                            reconcileSuccessfulMarketInstall(classLoader, (String) param.args[1],
-                                    (String) param.args[3]);
                         }
                     });
             log("hooked SessionInstallReceiver pending install action");
@@ -539,6 +568,69 @@ public class MainHook implements IXposedHookLoadPackage {
         } catch (Throwable t) {
             log("AOSP DownloadProvider controls hook failed", t);
         }
+    }
+
+    private static void hookAospDownloadProvider(ClassLoader classLoader) {
+        try {
+            XposedHelpers.findAndHookMethod(
+                    "com.android.providers.downloads.DownloadProvider",
+                    classLoader,
+                    "update",
+                    Uri.class,
+                    ContentValues.class,
+                    String.class,
+                    String[].class,
+                    new XC_MethodHook() {
+                        private final ThreadLocal<Boolean> internalUpdate = new ThreadLocal<>();
+
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            if (Boolean.TRUE.equals(internalUpdate.get())) {
+                                return;
+                            }
+
+                            ContentValues values = (ContentValues) param.args[1];
+                            Integer status = values != null ? values.getAsInteger("status") : null;
+                            if ((status == null || (status != 190 && status != 197))
+                                    || !isCallerXiaomiMarket((Context) XposedHelpers.callMethod(
+                                            param.thisObject, "getContext"))) {
+                                return;
+                            }
+
+                            long token = Binder.clearCallingIdentity();
+                            internalUpdate.set(true);
+                            try {
+                                Object result = XposedBridge.invokeOriginalMethod(
+                                        param.method, param.thisObject, param.args);
+                                param.setResult(result);
+                                log("allowed Xiaomi Market DownloadProvider status=" + status
+                                        + " uri=" + param.args[0] + " updated=" + result);
+                            } finally {
+                                internalUpdate.remove();
+                                Binder.restoreCallingIdentity(token);
+                            }
+                        }
+                    });
+            log("hooked AOSP DownloadProvider status transitions");
+        } catch (Throwable t) {
+            log("AOSP DownloadProvider status hook failed", t);
+        }
+    }
+
+    private static boolean isCallerXiaomiMarket(Context context) {
+        if (context == null) {
+            return false;
+        }
+        String[] packages = context.getPackageManager().getPackagesForUid(Binder.getCallingUid());
+        if (packages == null) {
+            return false;
+        }
+        for (String packageName : packages) {
+            if (MARKET_PACKAGE.equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void hookMissingFrameworkMiuiMethods(ClassLoader classLoader) {
@@ -816,8 +908,10 @@ public class MainHook implements IXposedHookLoadPackage {
         try {
             ContentValues values = new ContentValues();
             values.put("control", pause ? 1 : 0);
+            // DownloadProvider only schedules a new job for STATUS_PENDING (190).
+            // STATUS_RUNNING (192) changes the row but leaves a paused job canceled.
+            values.put("status", pause ? 197 : 190);
             if (!pause) {
-                values.put("status", 192);
                 values.put("allowed_network_types", -1);
             }
             Uri uri = Uri.parse("content://downloads/my_downloads/" + downloadId);
@@ -835,7 +929,14 @@ public class MainHook implements IXposedHookLoadPackage {
             return;
         }
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        synchronized (MainHook.class) {
+            if (reconcileScheduled) {
+                return;
+            }
+            reconcileScheduled = true;
+        }
+
+        boolean posted = new Handler(Looper.getMainLooper()).postDelayed(() -> {
             try {
                 Class<?> infoClass = XposedHelpers.findClass(
                         "com.xiaomi.market.business_core.downloadinstall.data.DownloadInstallInfo",
@@ -850,8 +951,17 @@ public class MainHook implements IXposedHookLoadPackage {
                 }
             } catch (Throwable t) {
                 log("installed download reconcile scan failed", t);
+            } finally {
+                synchronized (MainHook.class) {
+                    reconcileScheduled = false;
+                }
             }
         }, 3000L);
+        if (!posted) {
+            synchronized (MainHook.class) {
+                reconcileScheduled = false;
+            }
+        }
     }
 
     private static void reconcileInstalledMarketDownload(ClassLoader classLoader, Context context, Object info) {
@@ -901,22 +1011,62 @@ public class MainHook implements IXposedHookLoadPackage {
     }
 
     private static void flushDeferredInstallIntent(Context context) {
-        Intent pending = deferredInstallIntent;
-        String packageName = deferredInstallPackage;
-        if (context == null || pending == null) {
+        if (context == null) {
             return;
         }
 
-        deferredInstallIntent = null;
-        deferredInstallPackage = null;
+        PendingInstallAction action;
+        synchronized (PENDING_INSTALL_LOCK) {
+            action = PENDING_INSTALL_ACTIONS.pollFirst();
+        }
+        if (action == null) {
+            return;
+        }
+
         try {
-            pending.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(pending);
-            log("started deferred PackageInstaller pending user action for " + packageName);
+            action.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(action.intent);
+            log("started deferred PackageInstaller pending user action for " + action.packageName);
         } catch (Throwable t) {
-            deferredInstallIntent = pending;
-            deferredInstallPackage = packageName;
-            log("deferred PackageInstaller launch failed for " + packageName, t);
+            synchronized (PENDING_INSTALL_LOCK) {
+                PENDING_INSTALL_ACTIONS.addFirst(action);
+            }
+            log("deferred PackageInstaller launch failed for " + action.packageName, t);
+        }
+    }
+
+    private static Intent getPendingUserActionIntent(Intent resultIntent) {
+        if (resultIntent == null) {
+            return null;
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            return resultIntent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
+        }
+        return resultIntent.getParcelableExtra(Intent.EXTRA_INTENT);
+    }
+
+    private static void deferInstallAction(Intent intent, String packageName) {
+        PendingInstallAction action = new PendingInstallAction(new Intent(intent), packageName);
+        synchronized (PENDING_INSTALL_LOCK) {
+            if (packageName != null) {
+                Iterator<PendingInstallAction> iterator = PENDING_INSTALL_ACTIONS.iterator();
+                while (iterator.hasNext()) {
+                    if (packageName.equals(iterator.next().packageName)) {
+                        iterator.remove();
+                    }
+                }
+            }
+            PENDING_INSTALL_ACTIONS.addLast(action);
+        }
+    }
+
+    private static final class PendingInstallAction {
+        final Intent intent;
+        final String packageName;
+
+        PendingInstallAction(Intent intent, String packageName) {
+            this.intent = intent;
+            this.packageName = packageName;
         }
     }
 
@@ -1015,6 +1165,14 @@ public class MainHook implements IXposedHookLoadPackage {
         }
 
         try {
+            if (Build.VERSION.SDK_INT >= 30) {
+                WindowInsetsController controller = activity.getWindow().getInsetsController();
+                if (controller != null) {
+                    int lightStatusBar = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS;
+                    controller.setSystemBarsAppearance(darkMode ? 0 : lightStatusBar, lightStatusBar);
+                    return;
+                }
+            }
             View decorView = activity.getWindow().getDecorView();
             int flags = decorView.getSystemUiVisibility();
             if (darkMode) {
@@ -1145,6 +1303,7 @@ public class MainHook implements IXposedHookLoadPackage {
     }
 
     private static void log(String message, Throwable t) {
-        XposedBridge.log(TAG + ": " + message + ": " + t);
+        XposedBridge.log(TAG + ": " + message);
+        XposedBridge.log(t);
     }
 }
