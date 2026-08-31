@@ -2,13 +2,14 @@
   <img src="logo.png" width="180" alt="TabVision YT Logo">
 </p>
 
-[![Repo Views](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpbzin%2FXiaomiMarketBypass&label=repo%20views&countColor=%230e75b6&style=flat)](https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2Fpbzin%2FXiaomiMarketBypass)
-
-![Downloads](https://img.shields.io/github/downloads/pbzin/XiaomiMarketBypass/total?style=flat&color=0e75b6&label=downloads)
-
-[![LSPosed Repo Views](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FXposed-Modules-Repo%2Fcom.pb.xiaomimarketbypass&label=LSPosed%20repo%20views&countColor=%230e75b6&style=flat)](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass)
-
-[![LSPosed Downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.pb.xiaomimarketbypass/total?style=flat&color=0e75b6&label=LSPosed%20downloads)](https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass/releases)
+<p>
+  <a href="https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2Fpbzin%2FXiaomiMarketBypass"><img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpbzin%2FXiaomiMarketBypass&label=repo%20views&countColor=%230e75b6&style=flat" alt="Repo Views"></a>
+  <a href="https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass"><img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FXposed-Modules-Repo%2Fcom.pb.xiaomimarketbypass&label=LSPosed%20repo%20views&countColor=%230e75b6&style=flat" alt="LSPosed Repo Views"></a>
+</p>
+<p>
+  <a href="https://github.com/pbzin/XiaomiMarketBypass/releases"><img src="https://img.shields.io/github/downloads/pbzin/XiaomiMarketBypass/total?style=flat&color=0e75b6&label=downloads" alt="Downloads"></a>
+  <a href="https://github.com/Xposed-Modules-Repo/com.pb.xiaomimarketbypass/releases"><img src="https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.pb.xiaomimarketbypass/total?style=flat&color=0e75b6&label=LSPosed%20downloads" alt="LSPosed Downloads"></a>
+</p>
 
 # Xiaomi Market Bypass
 
