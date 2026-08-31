@@ -25,16 +25,6 @@ The module targets `com.xiaomi.market` and patches the compatibility gaps that m
 - PackageInstaller confirmation started from the background on modern Android.
 - Stuck installs after a committed install session when the Market UI was backgrounded.
 
-## Tested behavior
-
-The current build was validated with Xiaomi Market **v4.111.0** (recommended version) downloading and installing TikTok Lite/Douyin Lite. The failing path was:
-
-1. Xiaomi Market finished the download.
-2. Android blocked the install confirmation activity because Market was in the background.
-3. Market stayed stuck at 100% / installing.
-
-The module now defers the pending PackageInstaller intent until Market returns to the foreground, retries the committed-but-uninstalled task, and lets Market receive the normal install-finished callback.
-
 ## Requirements
 
 - Android with LSPosed.
