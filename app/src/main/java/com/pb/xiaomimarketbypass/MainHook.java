@@ -567,6 +567,8 @@ public class MainHook implements IXposedHookLoadPackage {
                     new AospDownloadControlHook(true));
             XposedHelpers.findAndHookMethod(compatClass, "resume", long.class, int.class,
                     new AospDownloadControlHook(false));
+            XposedHelpers.findAndHookMethod(compatClass, "safeDelete", long.class, int.class,
+                    new AospDownloadDeleteHook());
             log("hooked AOSP DownloadProvider pause/resume controls");
         } catch (Throwable t) {
             log("AOSP DownloadProvider controls hook failed", t);
@@ -906,6 +908,16 @@ public class MainHook implements IXposedHookLoadPackage {
         }
     }
 
+    private static class AospDownloadDeleteHook extends XC_MethodHook {
+        @Override
+        protected void beforeHookedMethod(MethodHookParam param) {
+            long downloadId = (Long) param.args[0];
+            if (deleteAospDownload(downloadId)) {
+                param.setResult(true);
+            }
+        }
+    }
+
     private static boolean setAospDownloadPaused(long downloadId, boolean pause) {
         Context context = appContext;
         if (context == null || downloadId <= 0L) {
@@ -928,6 +940,24 @@ public class MainHook implements IXposedHookLoadPackage {
             return updated > 0;
         } catch (Throwable t) {
             log("AOSP download control failed id=" + downloadId + " pause=" + pause, t);
+            return false;
+        }
+    }
+
+    private static boolean deleteAospDownload(long downloadId) {
+        Context context = appContext;
+        if (context == null || downloadId <= 0L) {
+            log("skip AOSP download delete: context=" + context + " id=" + downloadId);
+            return false;
+        }
+
+        try {
+            Uri uri = Uri.parse("content://downloads/my_downloads/" + downloadId);
+            int deleted = context.getContentResolver().delete(uri, null, null);
+            log("deleted AOSP download id=" + downloadId + " rows=" + deleted);
+            return deleted > 0;
+        } catch (Throwable t) {
+            log("AOSP download delete failed id=" + downloadId, t);
             return false;
         }
     }
