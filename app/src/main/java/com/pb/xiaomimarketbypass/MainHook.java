@@ -126,6 +126,9 @@ public class MainHook implements IXposedHookLoadPackage {
         if ("android.provider.MiuiSettings$System".equals(className)) {
             return android.provider.MiuiSettings.System.class;
         }
+        if ("miui.content.res.MarketIconCustomizer".equals(className)) {
+            return miui.content.res.MarketIconCustomizer.class;
+        }
         if ("miui.os.Build".equals(className)) {
             return miui.os.Build.class;
         }
@@ -756,6 +759,16 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private static void hookMissingMiuiHybrid(ClassLoader classLoader) {
         try {
+            XposedHelpers.findAndHookMethod(
+                    "com.miui.hybrid.host.k",
+                    classLoader,
+                    "d",
+                    new XC_MethodReplacement() {
+                        @Override
+                        protected Object replaceHookedMethod(MethodHookParam param) {
+                            return appContext;
+                        }
+                    });
             XposedHelpers.findAndHookMethod(
                     "com.xiaomi.market.common.webview.MinaInterface",
                     classLoader,
