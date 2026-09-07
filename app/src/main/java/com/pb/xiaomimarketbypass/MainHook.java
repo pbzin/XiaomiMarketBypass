@@ -899,11 +899,6 @@ public class MainHook implements IXposedHookLoadPackage {
 
         @Override
         protected void beforeHookedMethod(MethodHookParam param) {
-            int engineType = (Integer) param.args[1];
-            if (engineType == 1 || engineType == 4) {
-                return;
-            }
-
             long downloadId = (Long) param.args[0];
             if (setAospDownloadPaused(downloadId, pause)) {
                 param.setResult(null);
